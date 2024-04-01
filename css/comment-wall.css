@@ -1,0 +1,130 @@
+:root {
+    --color-primary: #FF8800;
+    --color-primary-light: #F79D5C;
+    --color-primary-variant: #F97F16;
+    --color-red: #4F0000;
+    --color-red-light: #B55151;
+    --color-green: #373602;
+    --color-green-light: #6E9D3E;
+    --color-gray-900: #E17314;
+    --color-gray-700: #F3752B;
+    --color-gray-300: #F6B385;
+    --color-gray-200: #F5C8AD;
+    --color-white: #0F0F3E;
+    --color-bg: #9E5500;
+    --color-contrast: #18A2FF;
+
+    --transition: all 300ms ease;
+
+    --container-width-lg: 74%;
+    --container-width-md: 88%;
+    --form-width: 40%;
+
+    --card-border-radius-1: 0.3rem;
+    --card-border-radius-2: 0.5rem;
+    --card-border-radius-3: 0.8rem;
+    --card-border-radius-4: 2rem;
+    --card-border-radius-5: 5rem;
+}
+
+/*========================================COMMENT WALL============================================*/
+.comment-wall {
+    background-color: var(--color-gray-200);
+    border: 1px solid var(--color-gray-300);
+    border-radius: var(--card-border-radius-2);
+    padding: 20px;
+    margin: 20px 0;
+}
+
+.comment {
+    background-color: var(--color-white);
+    border: 1px solid var(--color-gray-300);
+    border-radius: var(--card-border-radius-1);
+    padding: 15px;
+    margin-bottom: 15px;
+}
+
+.comment .user-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    margin-right: 10px;
+}
+
+.comment .user-info {
+    display: flex;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.comment .comment-text {
+    color: var(--color-primary);
+    font-size: 16px;
+    line-height: 1.5;
+}
+
+.comment .comment-time {
+    color: var(--color-gray-700);
+    font-size: 12px;
+}
+
+.comment .like-button {
+    background-color: var(--color-green-light);
+    color: var(--color-white);
+    padding: 8px 12px;
+    border: none;
+    border-radius: var(--card-border-radius-1);
+    cursor: pointer;
+    transition: background-color var(--transition);
+}
+
+.comment .like-button:hover {
+    background-color: var(--color-primary-variant);
+}
+
+.comment-form {
+    margin-top: 20px;
+}
+
+.comment-form #comment-form-editor {
+    width: 100%;
+}
+
+.comment-form textarea {
+    display: none; /* Hide the hidden textarea */
+}
+
+.comment-form .submit-button {
+    background-color: var(--color-primary);
+    color: var(--color-white);
+    padding: 10px 20px;
+    border: none;
+    border-radius: var(--card-border-radius-2);
+    cursor: pointer;
+    transition: background-color var(--transition);
+}
+
+.comment-form .submit-button:hover {
+    background-color: var(--color-red);
+}
+
+.comment-text #block {
+    /* Your styles for the block element */
+    font-size: 16px;
+    line-height: 1.2;
+    color: #FFF; /* Example text color */
+    /* Add any other styles you want */
+}
+
+/* Styles for the Quill editor */
+#comment-editor-container .editor .ql-editor {
+    max-height: 5em; /* Set the max height to 5 rows */
+    overflow-y: auto; /* Add scroll if content exceeds the max height */
+}
+
+#comment-editor-container .editor .ql-toolbar {
+    border-bottom: 1px solid var(--color-gray-300);
+    max-height: 2em; /* Set the max height for the toolbar */
+    overflow-y: auto; /* Add scroll if content exceeds the max height */
+}
+

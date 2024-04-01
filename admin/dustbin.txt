@@ -1,0 +1,1065 @@
+
+<?php
+
+//echo "form from edit-profile page";
+require './config/database.php';
+
+//echo isset($_SESSION['edit-profile']);
+//get edit-edit-profile form data if edit-profile button was clicked
+if(isset($_POST['update'])){
+    echo "1";
+    //$update = $_GET['update'];
+    $firstname = filter_var($_POST['firstname'], FILTER_SANITIZE_FULL_SPECIAL_CHARS) ?? null;
+    $lastname = filter_var($_POST['lastname'], FILTER_SANITIZE_FULL_SPECIAL_CHARS) ?? null ;
+    $password1 = filter_var($_POST['password1'], FILTER_SANITIZE_FULL_SPECIAL_CHARS) ?? null;
+    $id = $_SESSION['user-id'];
+    if (isset($_POST['password2'])){
+        $update = 'pswd';
+        $password2 = filter_var($_POST['password2'], FILTER_SANITIZE_FULL_SPECIAL_CHARS) ?? null;
+    }elseif(isset($_FILES['avatar'])){
+        $update = 'avatar';
+        $avatar = $_FILES['avatar'] ?? null;
+    }
+    echo "2";
+    /*if ($update == 'pswd'){
+        $password2 = filter_var($_POST['password2'], FILTER_SANITIZE_FULL_SPECIAL_CHARS) ?? null;
+    }
+    if ($update == 'avatar'){
+        $avatar = $_FILES['avatar'] ?? null;
+    }*/
+    echo "3";
+    $query = "SELECT * FROM users WHERE id=$id";
+    $result = mysqli_query($connection, $query);
+    $user = mysqli_fetch_assoc($result);
+    echo "4";
+    //var_dump($user);
+    //var_dump($avatar);
+    if(isset($password2)){
+        $uppercase = preg_match('@[A-Z]@', $password2);
+        $lowercase = preg_match('@[a-z]@', $password2);
+        $number    = preg_match('@[0-9]@', $password2);
+        $specialChars = preg_match('@[^\w]@', $password2);
+    }
+    echo "5";
+    if(!$firstname){
+        $_SESSION['edit-profile'] = "Please enter your first name ";
+    }elseif (!$lastname){
+        $_SESSION['edit-profile'] = "Please enter your last name";
+    }elseif(!$password1){
+        $_SESSION['edit-profile'] = "Please enter your password";
+        echo "6";
+    }elseif($password1){
+        if(!password_verify($password1, $user['password'])){
+            $_SESSION['edit-profile'] = "Incorrect Password";
+        }else{
+            $password = $password1;
+        }
+        echo "7";
+    }
+    elseif($update == 'pswd'){
+        if(!$password2){
+            $_SESSION['edit-profile'] = "Please enter your new password";
+        }
+        elseif(!$uppercase || !$lowercase || !$number || !$specialChars || strlen($password2) < 8) {
+            $_SESSION['edit-profile'] = "Passwords must contain atleast one uppercase, one lowercase, one special character, one number and should have a minimum length of 8 ";
+        }else{
+            $password = $password2;
+        }
+    }
+    elseif($update == 'avatar' && !$avatar['name']){
+        $_SESSION['edit-profile'] = "Please upload your new avatar";
+    }else{
+        $avatar_destination_path = $user['avatar'];
+        if(isset($avatar['name']) && $update == 'avatar'){
+            $time = time();
+            $avatar_name = $time . $avatar['name'];
+            //make each image name unique using current timestamp
+            $avatar_tmp_name = $avatar['tmp_name'];
+            $avatar_destination_path = '../images/' . $avatar_name;
+
+            //make sure file is an image
+            $allowed_files = ['png', 'jpg', 'jpeg'];
+            $extension = explode('.', $avatar_name);
+            $extension = end($extension);
+            //$_SESSION['signup'] = '$extension';
+            if(in_array($extension, $allowed_files)){
+            //make sure image is not too large(1mb+)
+                if($avatar['size']<1000000){
+                    //upload avatar
+                    move_uploaded_file($avatar_tmp_name, $avatar_destination_path);
+                }else{
+                    $_SESSION['edit-profile'] = "File size is large, 1mb max limit.";
+                }
+            }else{
+                $_SESSION['signup'] = "File must be a png, jpg, jpeg";
+            }
+            //redirect back to add-user page if there was any problem
+            if (isset($_SESSION['edit-profile'])){
+                //pass form data back to add-user page
+                $_SESSION['edit-profile-data'] = $_POST;
+                header('location:' . ROOT_URL . '/admin/edit-profile.php');
+                die();
+            }else{
+                //insert new user into users table
+                $hashed_password = password_hash($password, PASSWORD_DEFAULT);
+                $update_user_query = "UPDATE users SET firstname=$firstname, lastname=$lastname, password =$hashed_password, avatar =$avatar_destination_path";
+                $insert_user_result = mysqli_query($connection, $insert_user_query);
+                if(!mysqli_errno($connection)){
+                    //redirect to login page with success message
+                    $_SESSION['edit-profile-success']="$portion updated";
+                    header('location: '. ROOT_URL . '/admin/profile-settings.php');
+                    die();
+                }
+            }
+        }
+        if (isset($_SESSION['edit-profile'])){
+            //pass form data back to add-user page
+            $_SESSION['edit-profile'] = $_POST;
+            header('location:' . ROOT_URL . '/admin/edit-profile.php');
+            die();
+        }
+    }
+}else{
+        //if button wasnt clicked, bounce back to profile settings page
+        header('location: '. ROOT_URL .'admin/edit-profile.php');
+        echo 'ERROR';
+        die();
+}
+?>
+
+
+
+
+$_SESSION['edit-profile'] = "User Invalid";
+        header('location: '.ROOT_URL.'admin/profile-settings.php');
+        die();
+
+
+
+
+
+
+
+
+
+<?php
+
+require 'partials/header.php'; 
+
+//get back form data if there was a registration error
+$fname = $_SESSION['edit-profile']['firstname'] ?? null;
+$lname = $_SESSION['edit-profile']['lastname'] ?? null;
+$id = $_SESSION['user-id'];
+
+//get back user data from database
+//$id = filter_var($_GET['id'], FILTER_SANITIZE_NUMBER_INT);
+$query = "SELECT * FROM users WHERE id=$id";
+$result = mysqli_query($connection, $query);
+$user = mysqli_fetch_assoc($result);
+if(isset($_GET['update'])){
+    $update = $_GET['update'];
+    $portion = '';
+    if($update == 'fname'){
+        $lname = $user['lastname'] ;
+        $portion = 'First Name';
+    }
+    elseif($update == 'lname'){
+        $fname = $user['firstname'] ;
+        $portion = 'Last Name';
+    }
+    elseif($update == 'pswd'){
+        $fname = $user['firstname'] ;
+        $lname = $user['lastname'] ;
+        $portion = 'Password';
+    }
+    elseif($update == 'avatar'){
+        $fname = $user['firstname'] ;
+        $lname = $user['lastname'] ;
+        $portion = 'Avatar' ;
+    }
+}else{
+    header('location: '.ROOT_URL.'admin/edit-profile.php');
+    die();
+}
+
+
+//delete profile data session
+unset($_SESSION['edit-profile']);
+?>
+    <section class="form__section">
+        <div class="container form__section-container">
+            <h2> Update Your <?php echo $portion?>
+            </h2>
+            <?php if (isset($_SESSION['edit-profile'])) : ?>
+                <div class="alert__message error">
+                    <p>
+                        <?= $_SESSION['edit-profile'];
+                        unset($_SESSION['edit-profile']);
+                        ?>
+                    </p>
+                </div>
+            <?php endif ?>
+            <!-- In edit-profile.php -->
+            <form action="<?= ROOT_URL ?>admin/edit-profile-logic.php?id=<?= $id ?>&update=<?= $update ?>" enctype="multipart/form-data" method="POST">
+            <form action="<?= ROOT_URL?>admin/edit-profile-logic.php?update=<?= $update?>" enctype="multipart/form-data" method="POST"><!--&id=<?= $id?>&update=<?= $update?>-->
+                <input type="text" name="firstname" value="<?= $fname?>" placeholder="First Name">
+                <input type="text" name="lastname" value="<?= $lname?>" placeholder="Last Name">
+                <?php if($update !== 'pswd'):?>
+                <input type="password" name="password1" placeholder="Password">
+                <?php elseif($update == 'pswd'):?>
+                <input type="password" name="password1" placeholder="Old Password">
+                <input type="password" name="password2" placeholder="New Password">
+                <?php elseif($update == 'avatar'): ?>
+                <div class="form__control" name="avatar-container">
+                    <label for="avatar">
+                        User Avatar
+                    </label>
+                    <input type="file" name="avatar" id="avatar">
+                </div>
+                <?php endif?>
+                <!--<a href=" ROOT_URL?>admin/edit-profile-logic.php?update= $update?>" class="btn sm"><center>Update</center></a>-->
+                <button type="submit" name="update" class="btn">Update</button>
+           </form>
+        </div>
+    </section>
+
+<?php
+    include '../partials/footer.php';
+?>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<?php
+require './config/database.php';
+
+if (isset($_POST['update'])) {
+    $firstname = filter_var($_POST['firstname'], FILTER_SANITIZE_FULL_SPECIAL_CHARS) ?? null;
+    $lastname = filter_var($_POST['lastname'], FILTER_SANITIZE_FULL_SPECIAL_CHARS) ?? null;
+    $password1 = filter_var($_POST['password1'], FILTER_SANITIZE_FULL_SPECIAL_CHARS) ?? null;
+    $id = filter_var($_POST['id'], FILTER_SANITIZE_NUMBER_INT);
+
+    
+    $query = "SELECT * FROM users WHERE id=?";
+    $stmt = mysqli_prepare($connection, $query);
+    mysqli_stmt_bind_param($stmt, "i", $id);
+    mysqli_stmt_execute($stmt);
+    $result = mysqli_stmt_get_result($stmt);
+    $user = mysqli_fetch_assoc($result);
+
+    if (isset($_POST['password2'])) {
+        $update = 'pswd';
+        $password2 = filter_var($_POST['password2'], FILTER_SANITIZE_FULL_SPECIAL_CHARS) ?? null;
+        $uppercase = preg_match('@[A-Z]@', $password2);
+        $lowercase = preg_match('@[a-z]@', $password2);
+        $number = preg_match('@[0-9]@', $password2);
+        $specialChars = preg_match('@[^\w]@', $password2);
+
+    } elseif (isset($_FILES['avatar'])) {
+        $update = 'avatar';
+        $avatar = $_FILES['avatar'] ?? null;
+    }
+
+    if (!$firstname || !$lastname || !$password1) {
+        $_SESSION['edit-profile'] = "Invalid Form Input on Edit Profile Page";
+    } elseif (!password_verify($password1, $user['password'])) {
+        $_SESSION['edit-profile'] = "Incorrect Password";
+    } else {
+        $password = $password1;
+
+        if (isset($password2)) {
+            if (!$uppercase || !$lowercase || !$number || !$specialChars || strlen($password2) < 8) {
+                $_SESSION['edit-profile'] = "Invalid new password";
+            } else {
+                $password = $password2;
+            }
+        } elseif ($update == 'avatar' && !$avatar['name']) {
+            $_SESSION['edit-profile'] = "Please upload your new avatar";
+        } else {
+            $avatar_destination_path = $user['avatar'];
+
+            if (isset($avatar['name']) && $update == 'avatar') {
+                $time = time();
+                $avatar_name = $time . $avatar['name'];
+                $avatar_tmp_name = $avatar['tmp_name'];
+                $avatar_destination_path = '../images/' . $avatar_name;
+
+                $allowed_files = ['png', 'jpg', 'jpeg'];
+                $extension = pathinfo($avatar_name, PATHINFO_EXTENSION);
+
+                if (in_array($extension, $allowed_files) && $avatar['size'] < 1000000) {
+                    move_uploaded_file($avatar_tmp_name, $avatar_destination_path);
+                } else {
+                    $_SESSION['edit-profile'] = "Invalid file size or type for avatar";
+                }
+            }
+
+            if (!isset($_SESSION['edit-profile'])) {
+
+                $hashed_password = password_hash($password, PASSWORD_DEFAULT);
+
+                $update_user_query = "UPDATE users SET firstname=?, lastname=?, password=?, avatar=? WHERE id=?";
+                $stmt = mysqli_prepare($connection, $update_user_query);
+                mysqli_stmt_bind_param($stmt, "ssssi", $firstname, $lastname, $hashed_password, $avatar_destination_path, $id);
+                mysqli_stmt_execute($stmt);
+
+                if (!mysqli_errno($connection)) {
+                    $portion = ($update == 'fname') ? 'First Name' : (($update == 'lname') ? 'Last Name' : (($update == 'pswd') ? 'Password' : 'Avatar'));
+
+                    $_SESSION['edit-profile-success'] = "$portion updated successfully";
+                    header('location: ' . ROOT_URL . 'admin/profile-settings.php');
+                    die();
+                } else {
+                    $_SESSION['edit-profile'] = "Failed to update user.";
+                }
+            }
+        }
+    }
+    header('location: ' . ROOT_URL . 'admin/profile-settings.php');
+    die();
+} else {
+    header('location: ' . ROOT_URL . 'admin/edit-profile.php');
+    die();
+}
+?>
+
+
+<?php
+require 'partials/header.php'; 
+
+// Get back form data if there was a registration error
+$fname = $_SESSION['edit-profile']['firstname'] ?? null;
+$lname = $_SESSION['edit-profile']['lastname'] ?? null;
+$id = $_SESSION['user-id'];
+//echo "Checkpoint 1";
+// Get back user data from the database
+$query = "SELECT * FROM users WHERE id=?";
+$stmt = mysqli_prepare($connection, $query);
+//echo "Checkpoint 2";
+if ($stmt) {
+    mysqli_stmt_bind_param($stmt, "i", $id);
+    mysqli_stmt_execute($stmt);
+
+    $result = mysqli_stmt_get_result($stmt);
+    $user = mysqli_fetch_assoc($result);
+    //echo "Checkpoint 3";
+    if ($user) {
+        echo "Checkpoint 4";
+        if (isset($_GET['update'])) {
+            $update = $_GET['update'];
+            $portion = '';
+            echo "Checkpoint 5";
+            if ($update == 'fname') {
+                $lname = $user['lastname'];
+                $portion = 'First Name';
+            } elseif ($update == 'lname') {
+                $fname = $user['firstname'];
+                $portion = 'Last Name';
+            } elseif ($update == 'pswd') {
+                $fname = $user['firstname'];
+                $lname = $user['lastname'];
+                $portion = 'Password';
+            } elseif ($update == 'avatar') {
+                $fname = $user['firstname'];
+                $lname = $user['lastname'];
+                $portion = 'Avatar';
+            }
+        } else {
+            header('location: '.ROOT_URL.'admin/edit-profile.php');
+            die();
+            //echo "Checkpoint 6";
+        }
+    } else {
+        header('location: '.ROOT_URL.'admin/edit-profile.php');
+        die();
+        //echo "Checkpoint 7";
+    }
+    //echo "Checkpoint 8";
+    // Close the prepared statement
+    mysqli_stmt_close($stmt);
+} else {
+    header('location: '.ROOT_URL.'admin/profile-settings.php');
+    die();
+    //echo "Checkpoint 9";
+}
+
+// Delete profile data session
+unset($_SESSION['edit-profile']);
+?>
+<section class="form__section">
+    <div class="container form__section-container">
+        <h2> Update Your <?php echo $portion?> </h2>
+        <form action="<?= ROOT_URL ?>admin/edit-profile-logic.php?update=<?= $update ?>" enctype="multipart/form-data" method="POST">
+            <input type="hidden" value="<?= $id?>" name="id">
+            <input type="text" name="firstname" value="<?= $fname?>" placeholder="First Name">
+            <input type="text" name="lastname" value="<?= $lname?>" placeholder="Last Name">
+            <?php if($update !== 'pswd'):?>
+            <input type="password" name="password1" placeholder="Password">
+            <?php endif?>
+            <?php if($update == 'pswd'):?>
+            <input type="password" name="password1" placeholder="Old Password">
+            <input type="password" name="password2" placeholder="New Password">
+            <?php endif?>
+            <?php if($update == 'avatar'): ?>
+            <div class="form__control" name="avatar-container">
+                <label for="avatar">
+                    User Avatar
+                </label>
+                <input type="file" name="avatar" id="avatar">
+            </div>
+            <?php endif?>
+            <button type="submit" name="update" class="btn">Update User</button>
+        </form>
+    </div>
+</section>
+
+<?php
+include '../partials/footer.php';
+?>
+
+
+//$query1 = "SELECT * FROM users WHERE id = $id";
+                //$result1 = mysqli_query($connection, $query1);
+                //$user1 =  mysqli_fetch_assoc($result1);
+                //if (mysqli_num_rows($result)==1){
+                    //var_dump($user1);
+                    //$old_avatar_name = $user['avatar'];
+                    //$old_avatar_path = '../images/' .$old_avatar_name;
+                    //delete image if available
+                    //if($old_avatar_path){
+                    //    unlink($old_avatar_path);
+                    //}
+                //}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<?php
+include 'partials/header.php';
+
+//fetch categories from database but not uncategorized category
+$current_user_id = $_SESSION['user-id'];
+$q = "SELECT * FROM users WHERE id = $current_user_id LIMIT 1";
+$r = mysqli_query($connection, $q);
+$u = mysqli_fetch_assoc($r);
+if ($u['is_admin'] == 1 && $u['is_admin'] == 2){
+    $query = "SELECT post_id, post_title, post_category_id, post_author_id FROM posts ORDER BY post_id DESC";
+    $posts = mysqli_query($connection, $query);
+    $is_privileged = 1;
+}else{
+    $query = "SELECT post_id, post_title, post_category_id FROM posts WHERE post_author_id = $current_user_id ORDER BY post_id DESC";
+    $posts = mysqli_query($connection, $query);
+    $is_privileged = 0;
+}
+?>
+
+
+    <section class="dashboard">
+        <?php if (isset($_SESSION['add-post-success'])):// shows if add post was successful?>
+                <div class="alert__message success container">
+                    <p>
+                        <?= $_SESSION['add-post-success'];
+                        unset($_SESSION['add-post-success']);
+                        ?>
+                    </p>
+                </div>
+        <?php elseif (isset($_SESSION['edit-post-success'])):// shows if edit post was successful?>
+                <div class="alert__message success container">
+                    <p>
+                        <?= $_SESSION['edit-post-success'];
+                        unset($_SESSION['edit-post-success']);
+                        ?>
+                    </p>
+                </div>
+        <?php elseif (isset($_SESSION['delete-post'])):// shows if delete post was not successful?>
+                <div class="alert__message error container">
+                    <p>
+                        <?= $_SESSION['delete-post'];
+                        unset($_SESSION['delete-post']);
+                        ?>
+                    </p>
+                </div>
+        <?php elseif (isset($_SESSION['delete-post-success'])):// shows if delete post was successful?>
+                <div class="alert__message success container">
+                    <p>
+                        <?= $_SESSION['delete-post-success'];
+                        unset($_SESSION['delete-post-success']);
+                        ?>
+                    </p>
+                </div>
+        <?php endif?>
+        <div class="container dashboard__container">
+            <button id="show__sidebar-btn" class="sidebar__toggle"><i class="uil uil-angle-double-right"></i></button>
+            <button id="hide__sidebar-btn" class="sidebar__toggle"><i class="uil uil-angle-double-left"></i></button>
+            <aside>
+                <ul>
+                    <li><a href="profile-settings.php"><i class="uil uil-setting"></i><h5>Profile Settings</h5></a></li>
+                    <li><a href="add-post.php"><i class="uil uil-file-plus"></i><h5>Add Post</h5></a></li>
+                    <li><a href="index.php" class="active"><i class="uil uil-dashboard"  class="active"></i><h5>Manage Posts</h5></a></li>
+                    <?php if(isset($_SESSION['user_is_admin']) && $_SESSION['user_is_admin']==1):?>
+                    <li><a href="add-user.php"><i class="uil uil-user-plus"></i><h5>Add User</h5></a></li>
+                    <li><a href="manage-users.php" ><i class="uil uil-user-arrows"></i><h5>Manage Users</h5></a></li>
+                    <li><a href="add-category.php"><i class="uil uil-lightbulb-alt"></i><h5>Add Category</h5></a></li>
+                    <li><a href="manage-categories.php"><i class="uil uil-list-ui-alt"></i><h5>Manage Categories</h5></a></li>
+                    <?php endif?>
+                    <?php if(isset($_SESSION['user_is_admin']) && $_SESSION['user_is_admin']==2) :?>
+                        <li><a href="add-category.php"><i class="uil uil-lightbulb-alt"></i><h5>Add Category</h5></a></li>
+                        <li><a href="manage-categories.php"><i class="uil uil-list-ui-alt"></i><h5>Manage Categories</h5></a></li>
+                    <?php endif?>
+                </ul>
+            </aside>
+            <main>
+                <h2> Manage Posts </h2>
+                <?php if(mysqli_num_rows($posts)> 0)  :?>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Title</th>
+                                <th>Category</th>
+                                <th>Author</th>
+                                <th>Edit</th>
+                                <th>Delete</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php while($post = mysqli_fetch_assoc($posts))  :?>
+                                <!--get category title of each post from categories table-->
+                                <?php
+                                $cat_id = $post['post_category_id'];
+                                $cat_query = "SELECT cat_title FROM categories WHERE cat_id = $cat_id";
+                                $cat_result = mysqli_query($connection, $cat_query);
+                                $category = mysqli_fetch_assoc($cat_result);
+                                if ($is_privileged == 0){
+                                    $auth_query = "SELECT firstname,lastname FROM users WHERE id = $current_user_id";
+                                }else{
+                                    $post_author_id = $post['post_author_id'];
+                                    $auth_query = "SELECT firstname,lastname FROM users WHERE id = $post_author_id";
+                                }
+                                $auth_result = mysqli_query($connection, $auth_query);
+                                $author = mysqli_fetch_assoc($auth_result);
+                                ?>
+                                <tr>
+                                    <td><?= $post['post_title'] ?></td>
+                                    <td><?= $category['cat_title'] ?></td>
+                                    <td><?="{$author['firstname']} {$author['lastname']}"?></td>
+                                    <td><a href="edit-post.php" class="btn sm">Edit</a></td>
+                                    <td><a href="delete-post.php" class="btn sm danger">Delete</a></td>
+                                </tr>
+                            <?php endwhile?>
+                        </tbody>
+                    </table>
+                <?php else:?>
+                        <div class="alert__message error">
+                        <?= "No posts found"?>
+                    </div>
+                <?php endif ?>
+            </main>
+        </div>
+    </section>
+
+<?php
+include '../partials/footer.php';
+?>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<?php
+include 'partials/header.php';
+
+//fetch categories
+$query = "SELECT * FROM categories";
+$categories = mysqli_query($connection, $query);
+
+if(isset($_GET['post_id'])){
+    $id = filter_var($_GET['post_id'], FILTER_SANITIZE_NUMBER_INT);
+
+    // fetch post data from database
+    $query = "SELECT * FROM posts WHERE post_id=?";
+    $stmt = mysqli_prepare($connection, $query);
+    mysqli_stmt_bind_param($stmt, "i", $id);
+    mysqli_stmt_execute($stmt);
+    $result = mysqli_stmt_get_result($stmt);
+    if(mysqli_num_rows($result)==1){
+        $post = mysqli_fetch_assoc($result);
+    }
+
+}else{
+    header('location: '. ROOT_URL . 'admin/index.php');
+    die();
+}
+?>
+    <section class="form__section">
+        <div class="container form__section-container">
+            <h2>Edit Post</h2>
+            <?php if(isset($_SESSION['edit-post'])):?>
+                <div class="alert__message error">
+                    <p>
+                        <?= $_SESSION['edit-post'];
+                        unset($_SESSION['edit-post']);?>
+                    </p>
+                </div>
+            <?php endif ?>
+            <form action="<?= ROOT_URL ?>admin/edit-post-logic.php?id=<?= $id ?>" enctype="multipart/form-data" method="POST">
+                <input type="text" placeholder="Title">
+                <select>
+                    <option value="0">Select Category</option>
+                    <?php while($category = mysqli_fetch_assoc($categories)):?>
+                        <option value="<?= $category['cat_id']?>"><?=$category['cat_title']?></option>
+                    <?php endwhile?>
+                </select>
+                <textarea rows="10" placeholder="Body"></textarea>
+                <div class="form__control inline">
+                    <input type="checkbox" name="is_featured" value = 1 id="is_featured" checked>
+                    <label for="is_featured">Featured</label>
+                </div>
+                <div class="form__control">
+                    <label for="thumbnail">Change Thumbnail</label>
+                    <input type="file" name="thumbnail" id="thumbnail">
+                </div>
+                <button type="submit" name="update" class="btn">Update Post</button>
+           </form>
+        </div>
+    </section>
+    <?php
+include '../partials/footer.php';
+?>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<!-- <select name="category">
+                    <option value="0">Select Category</option>
+                        <?php while ($category = mysqli_fetch_assoc($categories)) : ?>
+                            <?php
+                                if ($category['cat_id'] == $category_id){
+                                    $selected = 'selected';
+                                }else{
+                                    $selected = '';
+                                } 
+                            ?>
+                            <option value="<?= $category['cat_id'] ?>" <?= $selected ?>>
+                                <?= $category['cat_title'] ?>
+                            </option>
+                        <?php endwhile ?>
+                </select> -->
+
+
+
+
+
+
+
+
+
+
+
+                <?php
+include './partials/header.php';
+
+
+// Fetch categories
+error_reporting(E_ALL);
+ini_set('display_errors', 1);
+
+$query = "SELECT * FROM categories";
+$categories = mysqli_query($connection, $query);
+
+if(isset($_GET['id'])){
+    $id = filter_var($_GET['id'], FILTER_SANITIZE_NUMBER_INT);
+
+    // Fetch post data from the database
+    $query = "SELECT * FROM posts WHERE post_id=?";
+    $stmt = mysqli_prepare($connection, $query);
+    mysqli_stmt_bind_param($stmt, "i", $id);
+    mysqli_stmt_execute($stmt);
+    $result = mysqli_stmt_get_result($stmt);
+
+    if(mysqli_num_rows($result) == 1){
+        $post = mysqli_fetch_assoc($result);
+    } else {
+        header('location: '. ROOT_URL . 'admin/index.php');
+        die();
+    }
+} //else {
+    //header('location: '. ROOT_URL . 'admin/edit-post.php');
+    //die();
+//}
+?>
+<section class="form__section">
+    <div class="container form__section-container">
+        <h2>Edit Post</h2>
+        <?php if(isset($_SESSION['edit-post'])):?>
+            <div class="alert__message error">
+                <p>
+                    <?= $_SESSION['edit-post'];
+                    unset($_SESSION['edit-post']);?>
+                </p>
+            </div>
+        <?php endif ?>
+        <form action="<?= ROOT_URL ?>admin/edit-post-logic.php" enctype="multipart/form-data" method="POST">
+            <input type="hidden" name="post_id" value="<?= $id ?>">
+            <input type="text" name="title" placeholder="Title" value="<?= $post['post_title'] ?>">
+            <select name="category">
+                <option value="0">Select Category</option>
+                <?php while($category = mysqli_fetch_assoc($categories)):?>
+                    <?php if($category['cat_title'] !== 'Uncategorized'):?>
+                    <option value="<?= $category['cat_id']?>" <?= ($category['cat_id'] == $post['post_category_id']) ? 'selected' : '' ?>>
+                        <?=$category['cat_title']?>
+                    </option>
+                    <?php endif?>
+                <?php endwhile?>
+            </select>
+            <!-- Include Quill editor -->
+            <div id="editor-container">
+            <script>
+                var quill = new Quill('#editor-container', {
+                    theme: 'bubble',
+                    placeholder: 'Write something amazing...',
+                });
+
+                // Set existing post content to the editor
+                quill.root.innerHTML = '<?= $post['post_body'] ?>';
+            </script>
+            </div>
+            <textarea rows="10" name="body" placeholder="Body"><?= $post['post_body'] ?></textarea>
+            <?php if(isset($_SESSION['user_is_admin']) && $_SESSION['user_is_admin']==1):?>
+                <div class="form__control inline">
+                <input type="checkbox" name="is_featured" value="1" id="is_featured" <?= (isset($post['is_featured']) && $post['is_featured'] == 1) ? 'checked' : '' ?>>
+                    <label for="is_featured">Featured</label>
+                </div>
+            <?php endif?>
+            <div class="form__control">
+                <label for="thumbnail">Change Thumbnail</label>
+                <input type="file" name="thumbnail" id="thumbnail">
+            </div>
+            <button type="submit" name="update" class="btn">Update Post</button>
+        </form>
+    </div>
+</section>
+<?php
+include '../partials/footer.php';
+?>
